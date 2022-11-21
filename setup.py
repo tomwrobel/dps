@@ -5,6 +5,7 @@ setup(
     version='0.0.1',
     packages=find_packages(),
     install_requires=[
+        'rdflib==6.2.0',
     ],
     url='',
     author='Anusha Ranganathan',

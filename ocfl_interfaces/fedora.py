@@ -72,26 +72,22 @@ class FedoraApi:
     def get_information(self, container_id=None):
         headers = {"Accept": "text/turtle"}
         myURL = self.base_url + container_id
-        res = self.myConnection(method="POST", url=myURL, payload="", headers=headers)
-
-        g = rdflib.Graph()
-        g.parse(data=bytes(res.info()), format="turtle")
+        res = self.myConnection(method="GET", url=myURL, payload="", headers=headers)
         attributes = {}
-        for s, p, o in g.triples((None, None, None)):
-            if "fedora.info" in p:
-                prop = p.split("#")[-1]
-                attributes[prop] = o.value
+        body = res.read().decode()
+        if body:
+            g = rdflib.Graph()
+            g.parse(data=body, format="turtle")
+            for s, p, o in g.triples((None, None, None)):
+                if "fedora.info" in p:
+                    prop = p.split("#")[-1]
+                    attributes[prop] = o.value
         return attributes
 
-    def add_file(self, container_id, file_path, mime_type=None, digest=None):
-        # curl -X PUT --upload-file image.jpg -H"Content-Type: image/jpeg"
-        #      -H"digest: sha=cb1a576f22e8e3e110611b616e3e2f5ce9bdb941" "http://localhost:8080/rest/new/image"
-        #
-        # curl -i -u fedoraAdmin:fedoraAdmin -X POST --data-binary "@test_data/myparent8_data.json"
-        #      -H "Content-Disposition: attachment; filename=\"myparent8_data.json\"" "http://localhost:8080/fcrepo/rest/myparent0"
-        #
-        # curl -i -u fedoraAdmin:fedoraAdmin -X POST --data-binary "@/home/nraja/Downloads/ce666-10Nov2022.png"
-        #      -H "Content-Disposition: attachment; filename=\"ce666-10Nov2022.png\"" "http://localhost:8080/fcrepo/rest/myparent0"
+    def post_file_with_filename(self, container_id, file_path, mime_type=None):
+        # curl -i -u fedoraAdmin:fedoraAdmin -X POST --data-binary "@picture.jpg" -H "Content-Disposition: attachment; filename=\"picture.jpg\"" "http://localhost:8080/rest/parent"
+        # curl -i -u fedoraAdmin:fedoraAdmin -X POST --data-binary "@./test_data/myparent8_data.json" -H "Content-Disposition: attachment; filename=\"myparent8_data.json\"" "http://localhost:8080/fcrepo/rest/myparent0"
+        # In python we have to add mime_type header. Otherwise it returns a 400 error.
 
         if not container_id:
             return False
@@ -111,6 +107,59 @@ class FedoraApi:
         myURL = self.base_url + container_id + "/"
         res = self.myConnection(method="POST", url=myURL, payload=files, headers=headers)
 
+        if res.status in [201, 204]:
+            location = self.get_original_link_location(res, key="Location")
+            return location
+        else:
+            return False
+
+    def post_file_with_digest(self, container_id, file_path, mime_type=None, digest={}):
+        # curl -i -u fedoraAdmin:fedoraAdmin -X POST --data-binary "@picture.jpg"
+        #      -H"digest: sha=cb1a576f22e8e3e110611b616e3e2f5ce9bdb941" "http://localhost:8080/rest/parent"
+        # In python we have to add mime_type header. Otherwise it returns a 400 error.
+
+        return self.add_file_with_digest("POST", container_id, file_path, mime_type=mime_type, digest=digest)
+
+    def put_file_with_digest(self, container_id, file_path, mime_type=None, digest={}):
+        # curl -X PUT --upload-file image.jpg -H"Content-Type: image/jpeg"
+        #      -H"digest: sha=cb1a576f22e8e3e110611b616e3e2f5ce9bdb941" "http://localhost:8080/rest/new/image"
+        file_name = os.path.basename(file_path)
+        file_location = container_id + "/" + file_name
+        return self.add_file_with_digest("PUT", file_location, file_path, mime_type=mime_type, digest=digest)
+
+    def add_file_with_digest(self, method, container_id, file_path, mime_type=None, digest={}):
+        # curl -X PUT --upload-file image.jpg -H"Content-Type: image/jpeg"
+        #      -H"digest: sha=cb1a576f22e8e3e110611b616e3e2f5ce9bdb941" "http://localhost:8080/rest/new/image"
+
+        if method not in ["PUT", "POST"]:
+            method = "POST"
+
+        if not container_id:
+            return False
+        if not os.path.exists(file_path):
+            return FileNotFoundError(file_path)
+        if not mime_type:
+            mime_type = self.get_mime_type(file_path)
+            if not mime_type:
+                mime_type = "application/octet-stream"
+
+        headers = {}
+        # headers["Content-Disposition"] = f"attachment; filename={file_name}"
+        headers["Content-Type"] = mime_type
+        files = open(file_path, "rb").read()
+        if digest.get('sha1', None):
+            headers['digest'] = f"sha={digest['sha1']}"
+        elif digest.get('sha256', None):
+            headers['digest'] = f"sha-256={digest['sha256']}"
+        elif digest.get('sha512', None):
+            headers['digest'] = f"sha-512={digest['sha512']}"
+        else:
+            digest['sha1'] = hashlib.sha1(files).hexdigest()
+            headers['digest'] = f"sha={digest['sha1']}"
+
+        myURL = self.base_url + container_id
+        res = self.myConnection(method=method, url=myURL, payload=files, headers=headers)
+        print(res.status)
         if res.status in [201, 204]:
             location = self.get_original_link_location(res, key="Location")
             return location
