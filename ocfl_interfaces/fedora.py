@@ -84,6 +84,23 @@ class FedoraApi:
                     attributes[prop] = o.value
         return attributes
 
+    def create_new_version(self, container_id):
+        # curl -i -u fedoraAdmin:fedoraAdmin -X POST http://localhost:8080/fcrepo/rest/myparent0/fcr:versions
+        if not container_id:
+            return False
+        headers = {}
+        myURL = self.base_url + container_id + "/fcr:versions"
+        res = self.myConnection(method="POST", url=myURL, payload="", headers=headers)
+        if res.status in [201, 204]:
+            location = self.get_original_link_location(res, key="Location")
+            return location
+        else:
+            print(res.status)
+            print(res.info())
+            print(res.msg())
+            return False
+
+
     def post_file_with_filename(self, container_id, file_path, mime_type=None):
         # curl -i -u fedoraAdmin:fedoraAdmin -X POST --data-binary "@picture.jpg" -H "Content-Disposition: attachment; filename=\"picture.jpg\"" "http://localhost:8080/rest/parent"
         # curl -i -u fedoraAdmin:fedoraAdmin -X POST --data-binary "@./test_data/myparent8_data.json" -H "Content-Disposition: attachment; filename=\"myparent8_data.json\"" "http://localhost:8080/fcrepo/rest/myparent0"
@@ -131,6 +148,8 @@ class FedoraApi:
         # curl -X PUT --upload-file image.jpg -H"Content-Type: image/jpeg"
         #      -H"digest: sha=cb1a576f22e8e3e110611b616e3e2f5ce9bdb941" "http://localhost:8080/rest/new/image"
 
+        print("Arguments are ....", method, container_id, file_path, mime_type, digest)
+
         if method not in ["PUT", "POST"]:
             method = "POST"
 
@@ -154,16 +173,22 @@ class FedoraApi:
         elif digest.get('sha512', None):
             headers['digest'] = f"sha-512={digest['sha512']}"
         else:
+            print("No digest given. Evaluating ...")
             digest['sha1'] = hashlib.sha1(files).hexdigest()
+            print(headers)
             headers['digest'] = f"sha={digest['sha1']}"
-
+            print(headers)
         myURL = self.base_url + container_id
         res = self.myConnection(method=method, url=myURL, payload=files, headers=headers)
-        print(res.status)
+
         if res.status in [201, 204]:
             location = self.get_original_link_location(res, key="Location")
             return location
         else:
+            print(headers)
+            print("URL sent over : ", myURL)
+            print("File path ...: ", file_path)
+            print(res.status)
             return False
 
     def start_transaction(self):

@@ -1,3 +1,4 @@
 ocfl_objects/*
+!ocfl_objects/0\=ocfl_1.1
 test_data/*
 !test_data/.keep
