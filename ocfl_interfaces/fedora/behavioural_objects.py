@@ -1,16 +1,15 @@
 import uuid
-import os
 import time
 from .fedora_api import FedoraApi
 from test_objects.create_objects import CreateObjects
 
 
-class BehavioralObjects:
+class BehaviouralObjects:
     def __init__(self, host='localhost', port='8080', username="fedoraAdmin", password="fedoraAdmin",
-                 base_url = "/fcrepo/rest", ocfl_root="./ocfl-objects", test_data_dir='./test_data'):
+                 base_url = "/fcrepo/rest", use_https=False, ocfl_root="./ocfl-objects", test_data_dir='./test_data'):
         self.final_result = None
         self.fa = FedoraApi(host=host, port=port, username=username, password=password,
-                            base_url=base_url, ocfl_root=ocfl_root)
+                            base_url=base_url, use_https=use_https, ocfl_root=ocfl_root)
         self.test_data_dir = test_data_dir
         self.co = CreateObjects(self.test_data_dir)
         return

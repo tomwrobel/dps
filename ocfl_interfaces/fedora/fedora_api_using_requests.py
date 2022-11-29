@@ -1,20 +1,16 @@
 import os
-import http.client
+import requests
 import mimetypes
 import rdflib
 import hashlib
 import base64
 
 
-class FedoraApi:
-    def __init__(self, host='localhost', port='8080', username="fedoraAdmin", password="fedoraAdmin",
-                 base_url="/fcrepo/rest", use_https=False, ocfl_root="/data/ocfl-root"):
-        self.host = host
-        self.port = port
+class FedoraApiUsingRequests:
+    def __init__(self, base_url="http://localhost:8080/fcrepo/rest", username="fedoraAdmin", password="fedoraAdmin", ocfl_root="/data/ocfl-root"):
         self.username = username
         self.password = password
         self.base_url = base_url
-        self.use_https = use_https
         self.ocfl_root = ocfl_root
         if not self.base_url.endswith("/"):
             self.base_url = self.base_url + "/"
@@ -74,12 +70,12 @@ class FedoraApi:
         return result
 
     def get_information(self, container_id=None):
-        # TODO: This method is not working with http client. The body is empty.
+        #TODO: This method is not working with http client. The body is empty.
         headers = {"Accept": "text/turtle"}
         myURL = self.base_url + container_id
         res = self._http_request(method="GET", url=myURL, payload="", headers=headers)
         attributes = {}
-        body = res.read()  # .decode()
+        body = res.read()#.decode()
         if body:
             g = rdflib.Graph()
             g.parse(data=body, format="turtle")
@@ -95,19 +91,17 @@ class FedoraApi:
         # -H "Content-Disposition: attachment; filename=\"logo.png\"" -H "Slug:logo.png"
         # -H "Atomic-ID:http://localhost:8080/fcrepo/rest/fcr:tx/${atomicid}" http://localhost:8080/fcrepo/rest/${container}/
         return self.add_file("POST", container_id, file_path, file_location=file_location, atomic_id=atomic_id,
-                             mime_type=mime_type, sha1=sha1, sha256=sha256, sha512=sha512,
-                             calculate_digest=calculate_digest)
+                             mime_type=mime_type, sha1=sha1, sha256=sha256, sha512=sha512, calculate_digest=calculate_digest)
 
     def put_file(self, container_id, file_path, file_location=None, atomic_id=None, mime_type=None, sha1=None,
-                 sha256=None, sha512=None, calculate_digest=False):
+                  sha256=None, sha512=None, calculate_digest=False):
         # curl -X PUT --upload-file image.jpg -H"Content-Type: image/jpeg"
         #      -H"digest: sha=cb1a576f22e8e3e110611b616e3e2f5ce9bdb941" "http://localhost:8080/rest/new/image"
         return self.add_file("PUT", container_id, file_path, file_location=file_location, atomic_id=atomic_id,
-                             mime_type=mime_type, sha1=sha1, sha256=sha256, sha512=sha512,
-                             calculate_digest=calculate_digest)
+                             mime_type=mime_type, sha1=sha1, sha256=sha256, sha512=sha512, calculate_digest=calculate_digest)
 
     def add_file(self, method, container_id, file_path, file_location=None, atomic_id=None, mime_type=None, sha1=None,
-                 sha256=None, sha512=None, calculate_digest=False):
+                  sha256=None, sha512=None, calculate_digest=False):
         # TODO: File upload should be chunked, to handle very large files
         if not container_id:
             result = {'msg': "No container id given. Returning.", 'status': False}
@@ -176,29 +170,25 @@ class FedoraApi:
             return None
 
     def _http_request(self, method="GET", url="", payload="", headers={}):
-        headers["Authorization"] = self.auth
-        if self.use_https:
-            conn = http.client.HTTPSConnection(self.host, self.port)
-        else:
-            conn = http.client.HTTPConnection(self.host, self.port)
-        conn.request(method, url, payload, headers)
-        res = conn.getresponse()
-        conn.close()
-        return res
+        if method == "GET":
+            resp = requests.get(url, data=payload, auth=(self.username, self.password), headers=headers)
+        if method == "POST":
+            resp = requests.post(url, data=payload, auth=(self.username, self.password), headers=headers)
+        if method == "PUT":
+            resp = requests.post(url, data=payload, auth=(self.username, self.password), headers=headers)
+        return resp
 
     def _get_location(self, res, key="Link"):
         location = ""
         if key == "Location":
-            return res.getheader("Location")
+            return res.headers.get("Location")
         # Default to searching around the headers for the original Link
-        for j in res.getheader("Link").split(","):
-            if "original" in j:
-                location = j.split(";")[0].strip()[1:-1]
-        return location
+        return res.links['original']['url']
 
     def _decode_status(self, res):
-        result = {'status': False, 'msg': res.reason, 'status_code': res.status}
-        if 200 <= res.status < 300:
+        result = {'status': False, 'msg': res.text, 'status_code': res.status_code}
+        if 200 <= res.status_code < 300:
             result['status'] = True
         return result
+
 

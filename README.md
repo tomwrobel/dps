@@ -18,3 +18,36 @@ Start the docker containers for Fedora 6
 $ docker-compose up -d
 ```
 You should see the containers being built and the services start.
+
+## Creating behavioural objects in Fedora 6
+### Install the python packages
+```
+python3 -m venv dps_venv
+source dps_venv/bin/activate
+pip install --upgrade -r requirements.txt
+```
+
+### Run the code to create the behavioural objects
+
+```
+python create_behavioural_objects.py
+```
+
+This assumes the following:
+
+```
+host     = 'localhost'
+port     = '8080'
+username = 'fedoraAdmin'
+password = 'fedoraAdmin',
+base_url = '/fcrepo/rest'
+test_data_dir = './test_data'
+```
+
+To use different values, modify [line #5](https://github.com/tomwrobel/dps/blob/main/create_behavioural_objects.py#5) in `create_behavioural_objects.py`
+
+```
+b = BehaviouralObjects(host=host, port=post, username=username, password=password,
+                 base_url=base_url, test_data_dir=test_data_dir)
+```
+

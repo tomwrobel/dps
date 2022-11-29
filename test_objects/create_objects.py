@@ -7,7 +7,6 @@ class CreateObjects:
     def __init__(self, test_data_dir):
         if not os.path.isdir(test_data_dir):
             os.makedirs(test_data_dir, exist_ok=True)
-            # raise NotADirectoryError
         self.test_data_dir = test_data_dir
         # ToDo - Should they always be written to disk or can they just be held in memory?
 
