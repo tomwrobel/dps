@@ -41,13 +41,14 @@ port     = '8080'
 username = 'fedoraAdmin'
 password = 'fedoraAdmin',
 base_url = '/fcrepo/rest'
+use_https = False
 test_data_dir = './test_data'
 ```
 
-To use different values, modify [line #5](https://github.com/tomwrobel/dps/blob/main/create_behavioural_objects.py#5) in `create_behavioural_objects.py`
+To use different values, instantiate BehaviouralObjects with the required values in [line #5](https://github.com/tomwrobel/dps/blob/main/create_behavioural_objects.py#5), `create_behavioural_objects.py`
 
 ```
 b = BehaviouralObjects(host=host, port=post, username=username, password=password,
-                 base_url=base_url, test_data_dir=test_data_dir)
+                 base_url=base_url, use_https=use_https, test_data_dir=test_data_dir)
 ```
 
