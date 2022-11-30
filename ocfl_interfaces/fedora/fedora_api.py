@@ -4,18 +4,21 @@ import mimetypes
 import rdflib
 import hashlib
 import base64
+from os import environ as env
+from dotenv import load_dotenv
+from distutils.util import strtobool
 
 
 class FedoraApi:
-    def __init__(self, host='localhost', port='8080', username="fedoraAdmin", password="fedoraAdmin",
-                 base_url="/fcrepo/rest", use_https=False, ocfl_root="/data/ocfl-root"):
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
-        self.base_url = base_url
-        self.use_https = use_https
-        self.ocfl_root = ocfl_root
+    def __init__(self):
+        load_dotenv()
+        self.host = env['FEDORA_HOST']
+        self.port = env['FEDORA_PORT']
+        self.username = env['FEDORA_USERNAME']
+        self.password = env['FEDORA_PASSWORD']
+        self.base_url = env['FEDORA_BASE_URL']
+        self.use_https = bool(strtobool(env.get('FEDORA_USE_HTTPS', 'False')))
+        self.ocfl_root = env['FEDORA_HOST']
         if not self.base_url.endswith("/"):
             self.base_url = self.base_url + "/"
         b64 = base64.b64encode(f"{self.username}:{self.password}".encode("ascii")).decode()
@@ -25,10 +28,16 @@ class FedoraApi:
     def create_transaction(self):
         # curl -i -u fedoraAdmin:fedoraAdmin -X POST "http://localhost:8080/fcrepo/rest/fcr:tx"
         myURL = self.base_url + "fcr:tx"
-        res = self._http_request(method="POST", url=myURL, payload="", headers={})
-        result = self._decode_status(res)
-        if result['status']:
-            result['location'] = self._get_location(res, "Location")
+        result = self._http_request(method="POST", url=myURL, payload="", headers={})
+        return result
+
+    def keep_transaction_alive(self, atomic_id):
+        # curl -i -X POST "http://localhost:8080/rest/fcr:tx/ce4bb2bf-8ced-4c7d-b281-f2132e3064bb"
+        if not atomic_id:
+            result = {'msg': "No atomic id id given. Returning.", 'status': False}
+            return result
+        myURL = atomic_id
+        result = self._http_request(method="POST", url=myURL, payload="", headers={})
         return result
 
     def commit_transaction(self, atomic_id):
@@ -36,10 +45,8 @@ class FedoraApi:
         if not atomic_id:
             result = {'msg': "No atomic id id given. Returning.", 'status': False}
             return result
-        # myURL = self.base_url + f"fcr:tx/{atomic_id}"
         myURL = atomic_id
-        res = self._http_request(method="PUT", url=myURL, payload="", headers={})
-        result = self._decode_status(res)
+        result = self._http_request(method="PUT", url=myURL, payload="", headers={})
         return result
 
     def create_container(self, container_id=None, archival_group=True, atomic_id=None):
@@ -57,10 +64,7 @@ class FedoraApi:
             # Container is created within a transaction
             headers["Atomic-ID"] = atomic_id
         myURL = self.base_url
-        res = self._http_request(method="POST", url=myURL, payload="", headers=headers)
-        result = self._decode_status(res)
-        if result['status']:
-            result['location'] = self._get_location(res)
+        result = self._http_request(method="POST", url=myURL, payload="", headers=headers)
         return result
 
     def create_new_version(self, container_id):
@@ -69,17 +73,16 @@ class FedoraApi:
             result = {'msg': "No container id given. Returning.", 'status': False}
             return result
         myURL = self.base_url + container_id + "/fcr:versions"
-        res = self._http_request(method="POST", url=myURL, payload="", headers={})
-        result = self._decode_status(res)
+        result = self._http_request(method="POST", url=myURL, payload="", headers={})
         return result
 
     def get_information(self, container_id=None):
         # TODO: This method is not working with http client. The body is empty.
         headers = {"Accept": "text/turtle"}
         myURL = self.base_url + container_id
-        res = self._http_request(method="GET", url=myURL, payload="", headers=headers)
+        result = self._http_request(method="GET", url=myURL, payload="", headers=headers)
         attributes = {}
-        body = res.read()  # .decode()
+        body = result['body']
         if body:
             g = rdflib.Graph()
             g.parse(data=body, format="turtle")
@@ -154,10 +157,7 @@ class FedoraApi:
             if calculate_digest:
                 sha512 = hashlib.sha512(f.read()).hexdigest()
                 headers["digest"] = f"sha-512={sha512}"
-            res = self._http_request(method=method, url=myURL, payload=f.read(), headers=headers)
-        result = self._decode_status(res)
-        if result['status']:
-            result['location'] = self._get_location(res, "Location")
+            result = self._http_request(method=method, url=myURL, payload=f.read(), headers=headers)
         return result
 
     def get_ocfl_object_path(self, container_id):
@@ -184,21 +184,20 @@ class FedoraApi:
         conn.request(method, url, payload, headers)
         res = conn.getresponse()
         conn.close()
-        return res
+        # Return a sensible dictionary
+        result = {'status': False, 'msg': res.reason, 'status_code': res.status, 'body': res.read()}
+        if 200 <= res.status < 300:
+            result['status'] = True
+            result['location'] = res.getheader("Location", "")
+            result['link'] = self._get_location_from_link(res)
 
-    def _get_location(self, res, key="Link"):
+        return result
+
+    def _get_location_from_link(self, res):
+        # Extract the location from headers for the original Link
         location = ""
-        if key == "Location":
-            return res.getheader("Location")
-        # Default to searching around the headers for the original Link
-        for j in res.getheader("Link").split(","):
+        for j in res.getheader("Link", "").split(","):
             if "original" in j:
                 location = j.split(";")[0].strip()[1:-1]
         return location
-
-    def _decode_status(self, res):
-        result = {'status': False, 'msg': res.reason, 'status_code': res.status}
-        if 200 <= res.status < 300:
-            result['status'] = True
-        return result
 

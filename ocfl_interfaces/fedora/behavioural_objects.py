@@ -1,15 +1,15 @@
+import os.path
 import uuid
 import time
+import subprocess
 from .fedora_api import FedoraApi
 from test_objects.create_objects import CreateObjects
 
 
 class BehaviouralObjects:
-    def __init__(self, host='localhost', port='8080', username="fedoraAdmin", password="fedoraAdmin",
-                 base_url = "/fcrepo/rest", use_https=False, ocfl_root="./ocfl-objects", test_data_dir='./test_data'):
+    def __init__(self, test_data_dir='./test_data'):
         self.final_result = None
-        self.fa = FedoraApi(host=host, port=port, username=username, password=password,
-                            base_url=base_url, use_https=use_https, ocfl_root=ocfl_root)
+        self.fa = FedoraApi()
         self.test_data_dir = test_data_dir
         self.co = CreateObjects(self.test_data_dir)
         return
@@ -72,6 +72,8 @@ class BehaviouralObjects:
         if not final_result['status']:
             return final_result
         atomic_id = result.get('location', None)
+        # keep transaction alive
+        proc = self._start_keep_alive_subprocess(atomic_id)
         # create a container
         result = self.fa.create_container(container_id=container_id, archival_group=True, atomic_id=atomic_id)
         result['ocfl_path'] = self.fa.get_ocfl_object_path(container_id)
@@ -86,8 +88,11 @@ class BehaviouralObjects:
                                        atomic_id=atomic_id)
             final_result = self._collate_results(f"Add file {file_location}", final_result, result)
         # commit the transaction
+        print(f"Committing transaction {atomic_id}")
         result = self.fa.commit_transaction(atomic_id)
         final_result = self._collate_results("Commit transaction", final_result, result)
+        print("Terminating the keep alive process")
+        proc.kill()
         return final_result
 
     def _collate_results(self, action, final_result, result):
@@ -108,3 +113,9 @@ class BehaviouralObjects:
             return self.co.create_complex_binary_file()
         elif file_type == 'very_large_binary':
             return self.co.create_very_large_binary_file()
+
+    def _start_keep_alive_subprocess(self, atomic_id):
+        cmd = ["python", "./ocfl_interfaces/fedora/keep_alive.py", atomic_id]
+        proc = subprocess.Popen(cmd, shell=False, close_fds=True )# stdin=None, stdout=None, stderr=None, close_fds=True)
+        return proc
+
