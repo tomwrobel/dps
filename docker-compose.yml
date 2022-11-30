@@ -25,6 +25,7 @@ services:
       - fcrepo:$FCREPO_HOME
       - ./fcrepo.properties:/data/fcrepo.properties
       - ./ocfl_objects:$OCFL_ROOT
+      - ./shared_data:/data/shared_data
     environment:
       - CATALINA_OPTS=-Dfcrepo.home=$FCREPO_HOME -Dfcrepo.config.file=/data/fcrepo.properties
 

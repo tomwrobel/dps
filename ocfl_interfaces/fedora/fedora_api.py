@@ -18,7 +18,7 @@ class FedoraApi:
         self.password = env['FEDORA_PASSWORD']
         self.base_url = env['FEDORA_BASE_URL']
         self.use_https = bool(strtobool(env.get('FEDORA_USE_HTTPS', 'False')))
-        self.ocfl_root = env['FEDORA_HOST']
+        self.ocfl_root = env['OCFL_ROOT']
         if not self.base_url.endswith("/"):
             self.base_url = self.base_url + "/"
         b64 = base64.b64encode(f"{self.username}:{self.password}".encode("ascii")).decode()
@@ -109,9 +109,65 @@ class FedoraApi:
                              mime_type=mime_type, sha1=sha1, sha256=sha256, sha512=sha512,
                              calculate_digest=calculate_digest)
 
+    def add_external_file(self, method, container_id, local_file_path, server_file_path, file_location=None,
+                          atomic_id=None, mime_type=None, sha1=None, sha256=None, sha512=None, calculate_digest=False):
+        #curl -i -H"Link: <file:///data/shared_data/largeBinary.bin>; rel=\"http://fedora.info/definitions/fcrepo#ExternalContent\";
+        # handling=\"copy\"; type=\"application/octet-stream\"" -H"SLUG: largeBinary"
+        # -XPOST -u fedoraAdmin:fedoraAdmin http://localhost:8080/fcrepo/rest/7516aef5-aed7-4a92-aa27-4467028c83aa/
+
+        if not container_id:
+            result = {'msg': "No container id given. Returning.", 'status': False}
+            return result
+        if not mime_type:
+            mime_type = self._get_mime_type(local_file_path)
+            if not mime_type:
+                mime_type = "application/octet-stream"
+        file_name = os.path.basename(local_file_path)
+        link = [
+            f"<file://{server_file_path}>",
+            'rel="http://fedora.info/definitions/fcrepo#ExternalContent\"',
+            'handling="copy"',
+            f"type=\"{mime_type}\""
+        ]
+        headers = {
+            "Link": "; ".join(link)
+        }
+        if method == 'POST':
+            # Add file name or location in the Slug header for POST
+            if file_location:
+                headers["Slug"] = file_location
+            else:
+                headers["Slug"] = file_name
+        if atomic_id:
+            # Container is created within a transaction
+            headers["Atomic-ID"] = atomic_id
+
+        if sha1:
+            headers["digest"] = f"sha={sha1}"
+        elif sha256:
+            headers["digest"] = f"sha-256={sha256}"
+        elif sha512:
+            headers["digest"] = f"sha-512={sha512}"
+
+        myURL = self.base_url + container_id
+        if method == 'PUT':
+            # Add file name or location in the URL for PUT
+            if file_location:
+                myURL = myURL + '/' + file_location
+            else:
+                myURL = myURL + '/' + file_name
+
+        if calculate_digest:
+            with open(local_file_path, "rb") as f:
+                sha512 = hashlib.sha512(f.read()).hexdigest()
+                headers["digest"] = f"sha-512={sha512}"
+
+        print(headers)
+        result = self._http_request(method=method, url=myURL, payload="", headers=headers)
+        return result
+
     def add_file(self, method, container_id, file_path, file_location=None, atomic_id=None, mime_type=None, sha1=None,
                  sha256=None, sha512=None, calculate_digest=False):
-        # TODO: File upload should be chunked, to handle very large files
         if not container_id:
             result = {'msg': "No container id given. Returning.", 'status': False}
             return result

@@ -27,28 +27,47 @@ source dps_venv/bin/activate
 pip install --upgrade -r requirements.txt
 ```
 
+### Copy the environment variables
+
+Copy the template environment variables file `.env.template` to `.env`. It has default values for working with Fedora running in docker.
+
+```
+cp .env.template .env
+```
+
 ### Run the code to create the behavioural objects
 
 ```
 python create_behavioural_objects.py
 ```
 
-This assumes the following:
+The script `create_behavioural_objects.py` creates 5 objects in fedora, as set out in https://github.com/tomwrobel/dps/issues/1.
 
-```
-host     = 'localhost'
-port     = '8080'
-username = 'fedoraAdmin'
-password = 'fedoraAdmin',
-base_url = '/fcrepo/rest'
-use_https = False
-test_data_dir = './test_data'
-```
+- Metadata only object
 
-To use different values, instantiate BehaviouralObjects with the required values in [line #5](https://github.com/tomwrobel/dps/blob/main/create_behavioural_objects.py#5), `create_behavioural_objects.py`
+  - a single 2Kb metadata file
 
-```
-b = BehaviouralObjects(host=host, port=post, username=username, password=password,
-                 base_url=base_url, use_https=use_https, test_data_dir=test_data_dir)
-```
+- Binary file object
+
+  - 2 binary files 5Mb in size and a single metadata file 2Kb in size
+
+- Large binary file objects
+
+  - 5 binary files 1Gb in size and a single metadata file 2Kb in size
+
+- Complex binary file objects
+
+  - 100 binary files 500Mb in size and a single metadata file 2Kb in size
+
+- Very large binary file objects
+
+  - This is defined as 1 256Gb file and a single metadata file 2Kb in size.
+
+  - In order for this to work, a file is first created, copied to a shared volume, which fedora has access to and then do a POST asking Fedora to copy an external file.
+
+  - **Note:**
+
+    In my development environment, I can create an object in Fedora with a file upto size 10Gb. Anything more than this, and Fedora throws a 500 error. This size can be varied by changing the value in the environment variable `VERY_LARGE_FILE_SIZE`. It is currently set to 10GB.
+
+
 

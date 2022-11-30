@@ -1,16 +1,20 @@
 #!/usr/bin/python
 import os
+import subprocess
 import shutil
+import math
+from dotenv import load_dotenv
+from os import environ as env
 
 
 class CreateObjects:
     def __init__(self, test_data_dir):
+        load_dotenv()
         if not os.path.isdir(test_data_dir):
             os.makedirs(test_data_dir, exist_ok=True)
         self.test_data_dir = test_data_dir
-        # ToDo - Should they always be written to disk or can they just be held in memory?
 
-    def create_file(self, file_name, file_size=0):
+    def create_file(self, file_name, file_size=0, timeout=15*60*60):
         # Create a file with given name and size (in bytes)
         if file_size <= 0:
             return
@@ -20,8 +24,15 @@ class CreateObjects:
             fS = os.stat(filePath).st_size
             if (file_size * 0.90) <= fS <= (file_size * 1.1):
                 return filePath
-        with open(filePath, "wb") as f:
-            f.write(os.urandom(file_size))
+        if file_size < (10 * 1024 * 1024):
+            with open(filePath, "wb") as f:
+                f.write(os.urandom(file_size))
+        else:
+            count = math.ceil(file_size / (10*1024*1024))
+            cmd = ["dd", "if=/dev/urandom", f"of={filePath}", "bs=10M", f"count={count}"]
+            print(cmd)
+            proc = subprocess.Popen(cmd, shell=False, close_fds=True)
+            proc.wait(timeout=timeout)
         return filePath
 
     def create_metadata_file(self, file_name="metadata.bin"):
@@ -38,13 +49,11 @@ class CreateObjects:
 
     def create_large_binary_file(self, file_name="largeBinary.bin"):
         # 1Gb in size
-        # ToDo: How slow is the system in creating this file?
         return self.create_file(file_name, 1 * 1024 * 1024 * 1024)
 
-    def create_very_large_binary_file(self, file_name="complexBinary.bin"):
+    def create_very_large_binary_file(self, file_name="veryLargeBinary.bin"):
         # 256Gb in size
-        # ToDo: How slow is the system in creating this file?
-        return self.create_file(file_name, 256 * 1024 * 1024 * 1024)
+        return self.create_file(file_name, int( env['VERY_LARGE_FILE_SIZE']))
 
     def cleanup(self, dir_to_clean=None):
         if dir_to_clean and os.path.isdir(dir_to_clean) and dir_to_clean.startswith(self.test_data_dir):
