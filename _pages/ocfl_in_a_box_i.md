@@ -32,7 +32,7 @@ The type of Fedora6 object you need to create is called an 'Archival Group'. The
 
 In an archival group, all child resources will be treated as part of the parent object, rather than as independent object children. An archival group keeps all child resources together on the file system. 
 
-***Fedora6 quirk***: When creating an archival group, F6 will generate an OCFL object with the file `v1/content/fcr-container.nt` and no other content. For all external object behaviours, the contents of the `v1/` version can be ignored. It creates this version, or revision, regardless of further calls. It also means that you don't NEED to wrap the object creation call within a transaction if you don't want or need to, as this version will be created regardless (you can't avoid unnecessary versions).
+***Fedora6 quirk***: When creating an archival group, F6 will generate an OCFL object with the file `v1/content/fcr-container.nt` and no other content. For all external object behaviours, the contents of the `v1/` version can be ignored. It creates this version, or revision, regardless of further calls. It also means that you don't NEED to wrap the object creation call within a transaction if you don't want or need to, as this version will be created regardless (you can't avoid unnecessary versions). See also [F6 transactions, timeouts, and other behaviours](#transactions)
 
 #####  Call you'll need to create an object
 
@@ -57,7 +57,17 @@ curl -X POST -u <user>:<pass> -H "Slug: <myObjectId>" -H "Link: <http://fedora.i
 
 #### How to add versions to an object sensibly
 
+- create transaction
+- do the thing
+- finish the transaction
+
 #### How to upload large files
+
+#### Transactions
+
+If you create a transaction explicitly, you control the version
+
+But you get a transaction any time
 
 ## Links
 
