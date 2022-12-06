@@ -117,7 +117,7 @@ curl -X PUT -u ${AUTH} ${TX_URI}
 
 #### How to upload large files
 
-Alternatively, we could start the upload. Wait for the reply, and keep alive during it. But we'd need to start a transaction first.
+Note for large files: we could start the upload. Wait for the reply, and keep alive during it. But we'd need to start a transaction first.
 
 ## Links
 
