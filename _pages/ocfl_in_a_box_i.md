@@ -55,6 +55,21 @@ curl -X POST -u ${AUTH} -H "Slug: ${MY_ID}" -H "Link: <http://fedora.info/defini
 
 ```
 
+```
+/data/ocfl/ocfl-root/18f/8d1/c6e/18f8d1c6ed46fcc252c9874568d72d5d1209352b9310c57ec56e730e082c8a7f
+├── 0=ocfl_object_1.1
+├── inventory.json
+├── inventory.json.sha512
+└── v1
+    ├── content
+    │   ├── binary_0.bin
+    │   ├── binary_1.bin
+    │   ├── fcr-container.nt
+    │   └── ora.ox.ac.uk:uuid:0184b503-6e45-46db-b8b8-7d599952c673.ora2.json
+    ├── inventory.json
+    └── inventory.json.sha512
+```
+
 #### How to add versions to an object sensibly
 
 You can, if you like, use the OCFL mutable head extension developed and proposed by Fedora6 (see the [OCFL Spec Extension 0005-mutable-head](https://ocfl.github.io/extensions/0005-mutable-head.html). However, we found this offered no noticeable benefits over transactions, and the downside that each separate call went into a separate revision directory, thereby increasing path depth. It's possible that mutable head would be useful for VERY large changes to objects that took place over serveral days, but we found that switching off mutable head beheviour didn't affect performance, and led to a less complex object structure.
