@@ -10,7 +10,7 @@ Our bit of the Bodleian Libraries (Oxford University's main library service) aim
 
 - reliable
 - create an valid and sensible OCFL version on disk
-- not too many file paths
+- shorter file paths are better (it helps rsync)
 - not too many versions (versions should make sense, ideally)
 
 ### What we're not looking for
