@@ -1,22 +1,38 @@
-# OCFL in a Box, part one
+# Fedora 6 and OCFL-in-a-box, part one
 
 If you don't want to hear the why, and just want the how, then [skip to the technical stuff](#HowTo)
 
 ## Introduction 
 
-Our bit of the Bodleian Libraries (Oxford University's main library service) aims to be at the forefront of Digital Preservation. Our Digital Microservices Project team has been working on building a set of microservices tools for the past 3 years. Part of this is the efficient, performant, and standardised preservation of digital content and metadata in a secure and open way. The Digital Preservation Service aims to provide a place for the long term storage of versioned digital objects and their metadata....
+Our bit of the Bodleian Libraries (Oxford University's main library service) aims to be at the forefront of Digital Preservation. Our Digital Microservices Project team has been working on building a set of microservices tools for the past 3 years. Part of this is the efficient, performant, and standardised preservation of digital content and metadata in a secure and open way. The Digital Preservation Service aims to provide a place for the long term storage of versioned digital objects and their metadata. 
+
+We have selected [OCFL](https://ocfl.io/), the Oxford Common File Layer, as our format for versioned digital objects. Our aim - as the title suggests - is to deploy an application to get the objects into OCFL, and to manage them once in place. Ideally, this application would create 'vanilla' OCFL objects with no additional application behaviour preserved in the OCFL object.
+
+This post is about how we set up, configured, and tested Fedora 6 as the application layer. At the time of writing, December 2022, there were no other applications with a REST API that would allow us to create and manage OCFL objects.
 
 ### What we're looking for
 
-- reliable
-- create an valid and sensible OCFL version on disk
+- reliability and stability
+- performance within defined boundaries
+- being able to create and update a valid and sensible OCFL object on disk, locatable from its identifier only
 - shorter file paths are better (it helps rsync)
-- not too many versions (versions should make sense, ideally)
+- the system should not create too many versions (versions should make sense, ideally)
+- a system to protect objects against concurrent writes
+- basic access restrictions (e.g. username/password) on a system level
+- a stable, documented REST API that allows us to
+  - to create and update OCFL objects 
+  - to download binary files
+  - access point in time versions of those objects
+  - list point in time versions of those objects
+  - manage and deploy the application as a decoupled service
 
 ### What we're not looking for
 
-We aren't looking to Fedora-ise our data. We aren't looking for our object containers to have anything more than the ids and paths we want to create. We won't be using Fedora to store triples relating to these objects.
-
+- We aren't looking to Fedora-ise our data. Beyond the API, we won't be making searches or queries of the data using Fedora.
+- ACLs or access management beyond username/password
+- We aren't looking for our object containers to have anything more than the ids and paths we want to create 
+- We won't be using Fedora to store triples relating to these objects
+- We won't be using Fedora for digital preservation apart from - ideally - validating ingest  
 
 ## Howto
 
