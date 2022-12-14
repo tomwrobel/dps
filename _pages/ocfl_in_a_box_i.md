@@ -71,6 +71,9 @@ binary_0.bin
 binary_1.bin
 ```
 
+To create the files
+
+
 ```
 ## 1. Create a transaction (and store the ID)
 curl -i -u ${AUTH} -X POST https://${MY_REPO}/rest/fcr:tx 
@@ -87,7 +90,9 @@ curl -X POST -u ${AUTH} --data-binary @binary_1.bin -H "Slug: binary_1.bin" -H "
 
 ### 3. Finish the transaction
 
-curl -X PUT -u ${AUTH} ${TX_URI}```
+curl -X PUT -u ${AUTH} ${TX_URI}
+
+```
 
 ##### Object on disk after the call
 
